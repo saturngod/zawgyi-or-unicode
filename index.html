@@ -1,17 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Myanmar Text Encoding Detector</title>
     <style>
+        :root {
+            --primary-color: #4CAF50;
+            --primary-hover: #45a049;
+            --unicode-bg: #e8f5e9;
+            --unicode-color: #2e7d32;
+            --zawgyi-bg: #fff3e0;
+            --zawgyi-color: #ef6c00;
+            --unknown-bg: #f5f5f5;
+            --unknown-color: #616161;
+        }
+
         body {
             font-family: Arial, sans-serif;
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
-            background-color: #f5f5f5;
+            background-color: var(--unknown-bg);
+            line-height: 1.6;
         }
 
         h1 {
@@ -23,33 +34,34 @@
             background-color: white;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-            padding-right: 28px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
         textarea {
-            width: 98%;
+            width: 100%;
             height: 150px;
             padding: 10px;
             margin-bottom: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 16px;
-
+            box-sizing: border-box;
+            resize: vertical;
         }
 
         button {
-            background-color: #4CAF50;
+            background-color: var(--primary-color);
             color: white;
             padding: 10px 15px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
             font-size: 16px;
+            transition: background-color 0.3s;
         }
 
         button:hover {
-            background-color: #45a049;
+            background-color: var(--primary-hover);
         }
 
         #result {
@@ -57,89 +69,120 @@
             padding: 15px;
             border-radius: 4px;
             font-weight: bold;
+            transition: all 0.3s;
         }
 
-        .unicode {
-            background-color: #e8f5e9;
-            color: #2e7d32;
-        }
-
-        .zawgyi {
-            background-color: #fff3e0;
-            color: #ef6c00;
-        }
-
-        .unknown {
-            background-color: #f5f5f5;
-            color: #616161;
-        }
+        .unicode { background-color: var(--unicode-bg); color: var(--unicode-color); }
+        .zawgyi { background-color: var(--zawgyi-bg); color: var(--zawgyi-color); }
+        .unknown { background-color: var(--unknown-bg); color: var(--unknown-color); }
     </style>
 </head>
-
 <body>
     <h1>Myanmar Text Encoding Detector</h1>
     <div class="container">
-        <textarea id="inputText" placeholder="Paste your Myanmar text here..."></textarea>
+        <textarea id="inputText" placeholder="Paste your Myanmar text here..." aria-label="Input text"></textarea>
         <button onclick="detectEncoding()">Detect Encoding</button>
-        <div id="result"></div>
+        <div id="result" role="alert"></div>
     </div>
 
     <script>
+        const ENCODINGS = {
+            UNICODE: 'Unicode',
+            ZAWGYI: 'Zawgyi',
+            UNKNOWN: 'Unknown'
+        };
+
+        const MARKERS = {
+            unicode: [
+                'ှ', 'ဿ', 'ည်', 'န်', 'ဋ္ဌ', 'င်္', 'ေး', 'ဥ်', 'ိံ', 'ုံ',
+                'ွှ', '္က', '္ခ', '္ဂ', '္ဃ', '္စ', '္ဆ', '္ဇ', '္ဈ', '္ဉ',
+                '္ဏ', '္တ', '္ထ', '္ဒ', '္ဓ', '္န', '္ပ', '္ဖ', '္ဗ', '္မ', '္လ'
+            ],
+            zawgyi: [
+                'ၾ', 'ႄ', '႔', 'ႏ', '႐', '႑', 'ႃ', 'ႆ', 'ႇ', 'ႈ', 'ႉ', 'ႊ',
+                'ၚ', 'ၠ', 'ၡ', 'ၢ', 'ၣ', 'ၥ', 'ၦ', 'ၧ', 'ၨ', 'ၩ',
+                'ၪ', 'ၫ', 'ၬ', 'ၭ', 'ၰ', 'ၱ', 'ၲ', 'ၳ', 'ၴ', 'ၵ', 'ၶ', 'ၷ', 'ၸ', 'ၹ', 'ၺ', 'ၻ', 'ၼ'
+            ],
+            zawgyiPatterns: [
+                'ွ်', '်း', 'ၤ', '္း', 'ኲ', 'ေ်', 'ၿ', 'ႀ', 'ႁ', 'ႎ', 'ႍ'
+            ]
+        };
+
+        function countOccurrences(text, pattern) {
+            return (text.match(new RegExp(pattern, 'g')) || []).length;
+        }
+
         function detectMyanmarEncoding(text) {
-            const unicodePattern = /[\u1000-\u1021][\u103B\u103C\u103D\u103E]+|[\u1000-\u1021][\u103B\u103C\u103D\u103E]+[\u1039][\u1000-\u1021]/g;
-
-            // Zawgyi pattern
-            const zawgyiPattern = /[\u1000-\u1021][\u103B\u103C\u103D\u103E]+|[\u1000-\u1021][\u103B\u103C\u103D\u103E]+[\u1039][\u1000-\u1021]|[\u1000-\u1021][\u1039][\u1000-\u1021]/g;
-
-            // Specific Zawgyi characters
-            const zawgyiOnly = /[\u105A\u1060-\u1097]/g;
-
-            if (zawgyiOnly.test(text)) {
-                return 'Zawgyi';
+            if (!text?.trim()) {
+                throw new Error('Please enter some text to detect.');
             }
 
-            const unicodeMatch = text.match(unicodePattern) || [];
-            const zawgyiMatch = text.match(zawgyiPattern) || [];
+            let unicodeScore = 0;
+            let zawgyiScore = 0;
             
-            if (zawgyiMatch.length > unicodeMatch.length) {
-                return 'Zawgyi';
-            } else if (unicodeMatch.length > zawgyiMatch.length) {
-                return 'Unicode';
-            } else {
-                // If can't determine definitively, check for specific patterns
-                const zawgyiSpecific = /\u1031\u103B|\u1031[\u103B\u107E-\u1084]/g;
-                if (zawgyiSpecific.test(text)) {
-                    return 'Zawgyi';
+            // Calculate scores
+            MARKERS.unicode.forEach(marker => {
+                unicodeScore += countOccurrences(text, marker);
+            });
+            
+            MARKERS.zawgyi.forEach(marker => {
+                zawgyiScore += countOccurrences(text, marker);
+            });
+            
+            MARKERS.zawgyiPatterns.forEach(pattern => {
+                zawgyiScore += countOccurrences(text, pattern) * 2;
+            });
+            
+            const totalScore = unicodeScore + zawgyiScore;
+            let confidence = 0;
+            let encoding = ENCODINGS.UNKNOWN;
+            
+            if (totalScore > 0) {
+                if (unicodeScore > zawgyiScore) {
+                    confidence = (unicodeScore / totalScore) * 100;
+                    encoding = ENCODINGS.UNICODE;
+                } else if (zawgyiScore > unicodeScore) {
+                    confidence = (zawgyiScore / totalScore) * 100;
+                    encoding = ENCODINGS.ZAWGYI;
                 }
-                return 'Unknown';
             }
-
+            
+            return {
+                encoding,
+                confidence: Math.round(confidence),
+                unicodeScore,
+                zawgyiScore
+            };
         }
 
         function detectEncoding() {
             const textArea = document.getElementById('inputText');
             const resultDiv = document.getElementById('result');
-
+            
             try {
                 const result = detectMyanmarEncoding(textArea.value);
-
-                // Remove any existing classes
-                resultDiv.classList.remove('unicode', 'zawgyi', 'unknown');
-
-                // Add appropriate class based on result
-                resultDiv.classList.add(result.toLowerCase());
-
-                // Display result
+                
+                resultDiv.className = result.encoding.toLowerCase();
+                
                 resultDiv.innerHTML = `
-                    Detected Encoding: ${result}<br>
+                    Detected Encoding: ${result.encoding}<br>
+                    Confidence: ${result.confidence}%<br>
+                    Unicode Score: ${result.unicodeScore}<br>
+                    Zawgyi Score: ${result.zawgyiScore}
                 `;
             } catch (error) {
-                resultDiv.classList.remove('unicode', 'zawgyi');
-                resultDiv.classList.add('unknown');
+                resultDiv.className = 'unknown';
                 resultDiv.textContent = error.message;
             }
         }
+
+        // Add event listener for Enter key
+        document.getElementById('inputText').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                detectEncoding();
+            }
+        });
     </script>
 </body>
-
 </html>
