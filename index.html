@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,17 +13,20 @@
             padding: 20px;
             background-color: #f5f5f5;
         }
+
         h1 {
             color: #333;
             text-align: center;
         }
+
         .container {
             background-color: white;
             padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
             padding-right: 28px;
         }
+
         textarea {
             width: 98%;
             height: 150px;
@@ -31,8 +35,9 @@
             border: 1px solid #ddd;
             border-radius: 4px;
             font-size: 16px;
-            
+
         }
+
         button {
             background-color: #4CAF50;
             color: white;
@@ -42,29 +47,35 @@
             cursor: pointer;
             font-size: 16px;
         }
+
         button:hover {
             background-color: #45a049;
         }
+
         #result {
             margin-top: 20px;
             padding: 15px;
             border-radius: 4px;
             font-weight: bold;
         }
+
         .unicode {
             background-color: #e8f5e9;
             color: #2e7d32;
         }
+
         .zawgyi {
             background-color: #fff3e0;
             color: #ef6c00;
         }
+
         .unknown {
             background-color: #f5f5f5;
             color: #616161;
         }
     </style>
 </head>
+
 <body>
     <h1>Myanmar Text Encoding Detector</h1>
     <div class="container">
@@ -75,92 +86,52 @@
 
     <script>
         function detectMyanmarEncoding(text) {
-            if (!text || typeof text !== 'string' || !text.trim()) {
-                throw new Error('Please enter some text to detect.');
+            const unicodePattern = /[\u1000-\u1021][\u103B\u103C\u103D\u103E]+|[\u1000-\u1021][\u103B\u103C\u103D\u103E]+[\u1039][\u1000-\u1021]/g;
+
+            // Zawgyi pattern
+            const zawgyiPattern = /[\u1000-\u1021][\u103B\u103C\u103D\u103E]+|[\u1000-\u1021][\u103B\u103C\u103D\u103E]+[\u1039][\u1000-\u1021]|[\u1000-\u1021][\u1039][\u1000-\u1021]/g;
+
+            // Specific Zawgyi characters
+            const zawgyiOnly = /[\u105A\u1060-\u1097]/g;
+
+            if (zawgyiOnly.test(text)) {
+                return 'Zawgyi';
             }
 
-            // Unicode markers
-            const unicodeMarkers = [
-                'ှ', 'ဿ', 'ည်', 'န်', 'ဋ္ဌ', 'င်္', 'ေး', 'ဥ်', 'ိံ', 'ုံ',
-                'ွှ', '္က', '္ခ', '္ဂ', '္ဃ', '္စ', '္ဆ', '္ဇ', '္ဈ', '္ဉ',
-                '္ဏ', '္တ', '္ထ', '္ဒ', '္ဓ', '္န', '္ပ', '္ဖ', '္ဗ', '္မ', '္လ'
-            ];
+            const unicodeMatch = text.match(unicodePattern) || [];
+            const zawgyiMatch = text.match(zawgyiPattern) || [];
             
-            // Zawgyi markers
-            const zawgyiMarkers = [
-                'ၾ', 'ႄ', '႔', 'ႏ', '႐', '႑', 'ႃ', 'ႆ', 'ႇ', 'ႈ', 'ႉ', 'ႊ',
-                'ၚ', 'ၠ', 'ၡ', 'ၢ', 'ၣ', 'ၥ', 'ၦ', 'ၧ', 'ၨ', 'ၩ',
-                'ၪ', 'ၫ', 'ၬ', 'ၭ', 'ၰ', 'ၱ', 'ၲ', 'ၳ', 'ၴ', 'ၵ', 'ၶ', 'ၷ', 'ၸ', 'ၹ', 'ၺ', 'ၻ', 'ၼ'
-            ];
-            
-            // Zawgyi patterns
-            const zawgyiPatterns = [
-                'ွ်', '်း', 'ၤ', '္း', 'ኲ', 'ေ်', 'ၿ', 'ႀ', 'ႁ', 'ႎ', 'ႍ'
-            ];
-            
-            let unicodeScore = 0;
-            let zawgyiScore = 0;
-            
-            // Check for Unicode markers
-            unicodeMarkers.forEach(marker => {
-                const count = (text.match(new RegExp(marker, 'g')) || []).length;
-                unicodeScore += count;
-            });
-            
-            // Check for Zawgyi markers
-            zawgyiMarkers.forEach(marker => {
-                const count = (text.match(new RegExp(marker, 'g')) || []).length;
-                zawgyiScore += count;
-            });
-            
-            // Check for Zawgyi patterns
-            zawgyiPatterns.forEach(pattern => {
-                const count = (text.match(new RegExp(pattern, 'g')) || []).length;
-                zawgyiScore += count * 2;
-            });
-            
-            // Calculate confidence
-            const totalScore = unicodeScore + zawgyiScore;
-            let confidence = 0;
-            let result = "Unknown";
-            
-            if (totalScore > 0) {
-                if (unicodeScore > zawgyiScore) {
-                    confidence = (unicodeScore / totalScore) * 100;
-                    result = "Unicode";
-                } else if (zawgyiScore > unicodeScore) {
-                    confidence = (zawgyiScore / totalScore) * 100;
-                    result = "Zawgyi";
+            if (zawgyiMatch.length > unicodeMatch.length) {
+                return 'Zawgyi';
+            } else if (unicodeMatch.length > zawgyiMatch.length) {
+                return 'Unicode';
+            } else {
+                // If can't determine definitively, check for specific patterns
+                const zawgyiSpecific = /\u1031\u103B|\u1031[\u103B\u107E-\u1084]/g;
+                if (zawgyiSpecific.test(text)) {
+                    return 'Zawgyi';
                 }
+                return 'Unknown';
             }
-            
-            return {
-                encoding: result,
-                confidence: Math.round(confidence),
-                unicodeScore,
-                zawgyiScore
-            };
+
         }
 
         function detectEncoding() {
             const textArea = document.getElementById('inputText');
             const resultDiv = document.getElementById('result');
-            
+
             try {
                 const result = detectMyanmarEncoding(textArea.value);
-                
+
                 // Remove any existing classes
                 resultDiv.classList.remove('unicode', 'zawgyi', 'unknown');
-                
+
                 // Add appropriate class based on result
-                resultDiv.classList.add(result.encoding.toLowerCase());
-                
+                resultDiv.classList.add(result.toLowerCase());
+
                 // Display result
                 resultDiv.innerHTML = `
-                    Detected Encoding: ${result.encoding}<br>
-                    Confidence: ${result.confidence}%<br>
-                    Unicode Score: ${result.unicodeScore}<br>
-                    Zawgyi Score: ${result.zawgyiScore}
+                    Detected Encoding: ${result}<br>
                 `;
             } catch (error) {
                 resultDiv.classList.remove('unicode', 'zawgyi');
@@ -170,4 +141,5 @@
         }
     </script>
 </body>
+
 </html>
